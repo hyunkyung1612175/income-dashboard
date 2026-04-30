@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INCAR · GA 소득 예측 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #030b1a;
+  --bg2: #061122;
+  --surface: rgba(255,255,255,0.04);
+  --surface2: rgba(255,255,255,0.07);
+  --border: rgba(100,160,255,0.10);
+  --gold: #4d8eff;
+  --gold-d: rgba(77,142,255,0.14);
+  --teal: #38d9f5;
+  --teal-d: rgba(56,217,245,0.12);
+  --red: #ff6b6b;
+  --red-d: rgba(255,107,107,0.13);
+  --blue: #93c5fd;
+  --blue-d: rgba(147,197,253,0.12);
+  --t1: #e8f1ff;
+  --t2: #6e8fbe;
+  --t3: #2e4a6a;
+  --sidebar: 230px;
+  --r: 12px;
+  --rL: 18px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--t1);font-size:13px;}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 70% 60% at 5% 10%,rgba(77,142,255,0.09) 0%,transparent 60%),
+  radial-gradient(ellipse 50% 50% at 95% 90%,rgba(56,217,245,0.07) 0%,transparent 60%),
+  radial-gradient(ellipse 60% 40% at 50% 50%,rgba(30,80,180,0.06) 0%,transparent 70%);
+  pointer-events:none;z-index:0;}
+
+/* ─── SCROLLBAR ──────────────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--t3);border-radius:10px;}
+
+/* ─── LOGIN ──────────────────────────────────────────── */
+#login-page{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:200;
+  background:radial-gradient(ellipse 90% 80% at 20% 20%,#071535 0%,#030b1a 60%,#020810 100%);
+  transition:opacity .5s,visibility .5s;}
+#login-page.hidden{opacity:0;visibility:hidden;}
+
+.login-wrap{width:420px;position:relative;}
+.login-logo{text-align:center;margin-bottom:36px;}
+.login-logo .l-mark{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;
+  background:linear-gradient(135deg,#4d8eff,#38d9f5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  letter-spacing:-1px;}
+.login-logo .l-sub{color:var(--t2);font-size:12px;letter-spacing:3px;text-transform:uppercase;margin-top:4px;}
+
+.login-card{background:rgba(10,25,70,0.55);border:1px solid rgba(77,142,255,0.18);border-radius:var(--rL);
+  padding:36px;backdrop-filter:blur(24px);box-shadow:0 24px 64px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.06);}
+.login-card h2{font-size:20px;font-weight:700;margin-bottom:6px;}
+.login-card p{color:var(--t2);font-size:12px;margin-bottom:28px;}
+
+.form-group{margin-bottom:18px;}
+.form-group label{display:block;font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.5px;
+  text-transform:uppercase;margin-bottom:8px;}
+.form-group input{width:100%;background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 16px;color:var(--t1);font-size:14px;font-family:'DM Mono',monospace;
+  outline:none;transition:border .2s;}
+.form-group input:focus{border-color:var(--gold);}
+.form-group input::placeholder{color:var(--t3);}
+
+.btn-login{width:100%;padding:14px;background:linear-gradient(135deg,#2563eb,#38d9f5);
+  border:none;border-radius:var(--r);color:#fff;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;
+  cursor:pointer;transition:opacity .2s,transform .1s;margin-top:8px;letter-spacing:.5px;}
+.btn-login:hover{opacity:.9;}
+.btn-login:active{transform:scale(.99);}
+
+.login-demo{margin-top:24px;background:var(--blue-d);border:1px solid rgba(91,156,246,0.2);
+  border-radius:var(--r);padding:14px;}
+.login-demo p{color:var(--blue);font-size:11px;font-weight:600;margin-bottom:8px;letter-spacing:.5px;}
+.login-demo .demo-row{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:11px;color:var(--t2);}
+.login-demo .demo-row code{font-family:'DM Mono',monospace;color:var(--t1);background:rgba(255,255,255,0.06);
+  padding:2px 8px;border-radius:6px;font-size:11px;}
+.login-demo .badge-admin{font-size:9px;background:var(--gold-d);color:var(--gold);padding:2px 6px;
+  border-radius:20px;font-weight:700;}
+
+.login-err{color:var(--red);font-size:12px;text-align:center;margin-top:12px;min-height:18px;}
+
+/* ─── APP LAYOUT ─────────────────────────────────────── */
+#app{display:flex;height:100vh;position:relative;z-index:1;opacity:0;transition:opacity .4s;}
+#app.visible{opacity:1;}
+
+/* ─── SIDEBAR ────────────────────────────────────────── */
+#sidebar{width:var(--sidebar);min-width:var(--sidebar);background:rgba(10,25,60,0.6);
+  border-right:1px solid rgba(77,142,255,0.12);display:flex;flex-direction:column;padding:24px 0;
+  backdrop-filter:blur(16px);}
+
+.sb-logo{padding:0 20px 24px;border-bottom:1px solid var(--border);}
+.sb-logo .mark{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+  background:linear-gradient(135deg,#4d8eff,#38d9f5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sb-logo .tag{font-size:10px;color:var(--t3);letter-spacing:2px;margin-top:1px;}
+
+.sb-user{padding:16px 20px;border-bottom:1px solid var(--border);}
+.sb-user .ava{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#38d9f5);
+  display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin-bottom:10px;}
+.sb-user .name{font-size:13px;font-weight:600;margin-bottom:3px;}
+.sb-user .info{font-size:11px;color:var(--t2);}
+.sb-user .role-badge{display:inline-block;margin-top:6px;font-size:10px;font-weight:700;padding:2px 8px;
+  border-radius:20px;}
+.role-badge.admin{background:var(--gold-d);color:var(--gold);}
+.role-badge.user{background:var(--teal-d);color:var(--teal);}
+
+.sb-nav{flex:1;padding:12px 0;overflow-y:auto;}
+.sb-section{font-size:10px;color:var(--t3);letter-spacing:1.5px;padding:12px 20px 6px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;
+  border-radius:0;transition:background .2s,color .2s;color:var(--t2);font-size:13px;
+  position:relative;border-left:2px solid transparent;}
+.nav-item:hover{background:var(--surface);color:var(--t1);}
+.nav-item.active{background:rgba(77,142,255,0.15);color:#93c5fd;border-left-color:#4d8eff;}
+.nav-item .ico{width:16px;text-align:center;font-size:14px;}
+.nav-item .badge{margin-left:auto;font-size:10px;background:var(--red);color:#fff;
+  padding:1px 6px;border-radius:10px;}
+
+.sb-bottom{padding:16px 20px;border-top:1px solid var(--border);}
+.btn-logout{width:100%;padding:10px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);color:var(--t2);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+  transition:all .2s;}
+.btn-logout:hover{background:var(--red-d);color:var(--red);border-color:rgba(255,107,107,0.3);}
+
+/* ─── MAIN CONTENT ───────────────────────────────────── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+.topbar{padding:16px 28px;border-bottom:1px solid rgba(77,142,255,0.10);display:flex;
+  align-items:center;justify-content:space-between;background:rgba(5,15,40,0.5);}
+.topbar .tb-left h1{font-size:18px;font-weight:700;}
+.topbar .tb-left p{font-size:12px;color:var(--t2);margin-top:2px;}
+.topbar .tb-right{display:flex;align-items:center;gap:12px;}
+.tb-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);
+  background:var(--surface);padding:6px 12px;border-radius:20px;border:1px solid var(--border);}
+.tb-emp{font-size:11px;color:var(--t2);}
+
+.content{flex:1;overflow-y:auto;padding:24px 28px;}
+
+/* ─── TAB VIEWS ──────────────────────────────────────── */
+.tab-view{display:none;}
+.tab-view.active{display:block;}
+
+/* ─── CARDS ──────────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rL);padding:24px;}
+.card-sm{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px;}
+
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rL);
+  padding:20px;position:relative;overflow:hidden;}
+.stat-card::before{content:'';position:absolute;top:0;right:0;width:80px;height:80px;
+  border-radius:50%;opacity:.15;transform:translate(30%,-30%);}
+.stat-card.gold::before{background:var(--gold);}
+.stat-card.teal::before{background:var(--teal);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.red::before{background:var(--red);}
+.stat-card .s-label{font-size:11px;color:var(--t2);font-weight:500;margin-bottom:10px;letter-spacing:.3px;}
+.stat-card .s-val{font-family:'DM Mono',monospace;font-size:24px;font-weight:500;margin-bottom:4px;}
+.stat-card.gold .s-val{color:var(--gold);}
+.stat-card.teal .s-val{color:var(--teal);}
+.stat-card.blue .s-val{color:var(--blue);}
+.stat-card.red .s-val{color:var(--red);}
+.stat-card .s-sub{font-size:11px;color:var(--t3);}
+
+/* ─── STEP FLOW ──────────────────────────────────────── */
+.steps-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.step-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rL);
+  padding:18px;position:relative;}
+.step-card.active{border-color:rgba(240,180,41,0.35);background:rgba(240,180,41,0.05);}
+.step-card.done{border-color:rgba(6,214,160,0.25);background:rgba(6,214,160,0.04);}
+.step-num{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.step-card.active .step-num{color:var(--gold);}
+.step-card.done .step-num{color:var(--teal);}
+.step-card h4{font-size:13px;font-weight:600;margin-bottom:12px;}
+
+/* ─── FORM ELEMENTS ──────────────────────────────────── */
+select,input[type=text],input[type=number]{
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;color:var(--t1);font-size:13px;font-family:'Noto Sans KR',sans-serif;
+  outline:none;transition:border .2s;width:100%;}
+select:focus,input:focus{border-color:var(--gold);}
+select option{background:#0d1628;}
+
+.btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+  border:none;font-family:'Noto Sans KR',sans-serif;transition:all .2s;}
+.btn-gold{background:linear-gradient(135deg,#2563eb,#38bdf8);color:#fff;}
+.btn-gold:hover{opacity:.9;}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--t2);}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold);}
+.btn-teal{background:var(--teal-d);border:1px solid rgba(6,214,160,0.3);color:var(--teal);}
+.btn-teal:hover{background:rgba(6,214,160,0.2);}
+.btn-sm{padding:6px 14px;font-size:12px;}
+
+/* ─── FILE UPLOAD ────────────────────────────────────── */
+.upload-area{border:2px dashed var(--border);border-radius:var(--r);padding:20px;
+  text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upload-area:hover,.upload-area.drag{border-color:var(--gold);background:var(--gold-d);}
+.upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-area .u-ico{font-size:24px;margin-bottom:8px;}
+.upload-area p{font-size:12px;color:var(--t2);}
+.upload-area .u-file{font-size:13px;color:var(--teal);font-weight:500;margin-top:4px;}
+
+/* ─── TABLE ──────────────────────────────────────────── */
+.table-wrap{overflow-x:auto;border-radius:var(--r);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;}
+thead th{background:rgba(255,255,255,0.04);padding:11px 14px;text-align:left;
+  font-size:11px;font-weight:600;color:var(--t2);letter-spacing:.5px;white-space:nowrap;
+  border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background .15s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:rgba(255,255,255,0.03);}
+tbody td{padding:11px 14px;font-size:13px;white-space:nowrap;}
+.num{font-family:'DM Mono',monospace;}
+.td-gold{color:var(--gold);font-family:'DM Mono',monospace;font-weight:500;}
+.td-teal{color:var(--teal);font-family:'DM Mono',monospace;}
+.td-red{color:var(--red);font-size:11px;}
+.chip{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.chip-matched{background:var(--teal-d);color:var(--teal);}
+.chip-unmatched{background:var(--red-d);color:var(--red);}
+.chip-admin{background:var(--gold-d);color:var(--gold);}
+.chip-user{background:var(--teal-d);color:var(--teal);}
+
+/* ─── PASTE AREA ─────────────────────────────────────── */
+.paste-area{width:100%;min-height:130px;background:rgba(255,255,255,0.04);
+  border:1px dashed var(--border);border-radius:var(--r);padding:14px;
+  color:var(--t1);font-family:'DM Mono',monospace;font-size:12px;resize:vertical;
+  outline:none;transition:border .2s;}
+.paste-area:focus{border-color:var(--gold);}
+.paste-area::placeholder{color:var(--t3);}
+
+/* ─── COMMISSION TABLE EDIT ──────────────────────────── */
+.ct-table input[type=number]{width:70px;padding:5px 8px;font-size:12px;font-family:'DM Mono',monospace;}
+
+/* ─── HISTORY ────────────────────────────────────────── */
+.hist-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:14px 18px;margin-bottom:10px;display:flex;align-items:center;gap:16px;cursor:pointer;
+  transition:border .2s;}
+.hist-row:hover{border-color:rgba(91,156,246,0.3);}
+.hist-row .h-date{font-family:'DM Mono',monospace;font-size:12px;color:var(--t2);min-width:140px;}
+.hist-row .h-info{flex:1;}
+.hist-row .h-total{font-family:'DM Mono',monospace;color:var(--gold);font-size:16px;font-weight:500;}
+
+/* ─── AI COMMENT ─────────────────────────────────────── */
+.ai-box{background:linear-gradient(135deg,rgba(91,156,246,0.08),rgba(6,214,160,0.06));
+  border:1px solid rgba(91,156,246,0.2);border-radius:var(--rL);padding:20px;}
+.ai-box .ai-hd{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.ai-box .ai-hd .ai-dot{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite;}
+.ai-box .ai-hd span{font-size:12px;font-weight:600;color:var(--teal);}
+.ai-item{font-size:12px;color:var(--t2);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);
+  line-height:1.6;}
+.ai-item:last-child{border-bottom:none;}
+.ai-item::before{content:'▸ ';color:var(--gold);}
+
+/* ─── CHECKBOX ───────────────────────────────────────── */
+.cb-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.cb-row input[type=checkbox]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;}
+.cb-row label{font-size:13px;cursor:pointer;}
+
+/* ─── SECTION HEADER ─────────────────────────────────── */
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.sec-hd h3{font-size:15px;font-weight:700;}
+.sec-hd .sec-sub{font-size:12px;color:var(--t2);}
+
+/* ─── TOAST ──────────────────────────────────────────── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px;}
+.toast-item{padding:12px 18px;border-radius:var(--r);font-size:13px;font-weight:500;
+  animation:slideUp .3s ease;box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.toast-item.success{background:rgba(6,214,160,0.15);border:1px solid rgba(6,214,160,0.4);color:var(--teal);}
+.toast-item.error{background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.4);color:var(--red);}
+.toast-item.info{background:rgba(91,156,246,0.15);border:1px solid rgba(91,156,246,0.4);color:var(--blue);}
+
+/* ─── EMPTY ──────────────────────────────────────────── */
+.empty{text-align:center;padding:48px 24px;color:var(--t3);}
+.empty .e-ico{font-size:32px;margin-bottom:12px;}
+.empty p{font-size:13px;}
+
+/* ─── MODAL ──────────────────────────────────────────── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:500;
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rL);
+  padding:28px;width:500px;max-width:95vw;}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:20px;}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
+
+/* ─── ROW / FLEX UTILS ───────────────────────────────── */
+.row{display:flex;gap:14px;}
+.row>.col{flex:1;}
+.row>.col2{flex:2;}
+.mt8{margin-top:8px;}
+.mt16{margin-top:16px;}
+.mt20{margin-top:20px;}
+.mb16{margin-bottom:16px;}
+.text-right{text-align:right;}
+.text-center{text-align:center;}
+.divider{height:1px;background:var(--border);margin:20px 0;}
+
+/* ─── ANIMATIONS ─────────────────────────────────────── */
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.fade-in{animation:fadeIn .35s ease;}
+
+/* ─── ADMIN GUARD ────────────────────────────────────── */
+.admin-only{display:none;}
+.is-admin .admin-only{display:block;}
+
+/* ─── SECTION TAG ────────────────────────────────────── */
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 10px;
+  border-radius:20px;font-weight:600;}
+.tag-gold{background:var(--gold-d);color:var(--gold);border:1px solid rgba(240,180,41,0.2);}
+.tag-teal{background:var(--teal-d);color:var(--teal);border:1px solid rgba(6,214,160,0.2);}
+.tag-blue{background:var(--blue-d);color:var(--blue);border:1px solid rgba(91,156,246,0.2);}
+.tag-red{background:var(--red-d);color:var(--red);border:1px solid rgba(255,107,107,0.2);}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════ LOGIN PAGE -->
+<div id="login-page">
+  <div class="login-wrap fade-in">
+    <div class="login-logo">
+      <div class="l-mark">◈ INCAR</div>
+      <div class="l-sub">GA Income Prediction System</div>
+    </div>
+    <div class="login-card">
+      <h2>로그인</h2>
+      <p>사번과 비밀번호를 입력하세요</p>
+      <div class="form-group">
+        <label>사번 (Employee ID)</label>
+        <input type="text" id="inp-emp" placeholder="예) 2023001" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>비밀번호</label>
+        <input type="password" id="inp-pw" placeholder="••••••••">
+      </div>
+      <button class="btn-login" onclick="doLogin()">로그인</button>
+      <div class="login-err" id="login-err"></div>
+    </div>
+    <div class="login-demo mt16">
+      <p>DEMO CREDENTIALS</p>
+      <div class="demo-row"><code>1612175</code> / <code>1234</code> <span class="badge-admin">ADMIN</span></div>
+      <div class="demo-row"><code>2023001</code> / <code>1234</code> <span style="font-size:11px;color:var(--t2)">김철수</span></div>
+      <div class="demo-row"><code>2023002</code> / <code>1234</code> <span style="font-size:11px;color:var(--t2)">이영희</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ MAIN APP -->
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-logo">
+      <div class="mark">◈ INCAR</div>
+      <div class="tag">GA 소득 예측</div>
+    </div>
+    <div class="sb-user">
+      <div class="ava" id="sb-ava">H</div>
+      <div class="name" id="sb-name">이현경</div>
+      <div class="info" id="sb-info">사번: 1612175</div>
+      <div class="role-badge admin" id="sb-role">관리자</div>
+    </div>
+    <div class="sb-nav">
+      <div class="sb-section">메인 메뉴</div>
+      <div class="nav-item active" onclick="showTab('income')">
+        <span class="ico">◉</span> 예상 소득 계산
+      </div>
+      <div class="nav-item" onclick="showTab('incentive')">
+        <span class="ico">◈</span> 시상 데이터 관리
+      </div>
+      <div class="nav-item" onclick="showTab('history')">
+        <span class="ico">◎</span> 계산 이력 조회
+      </div>
+      <div class="sb-section admin-only">관리자 메뉴</div>
+      <div class="nav-item admin-only" onclick="showTab('commission')">
+        <span class="ico">◇</span> 수수료 테이블 관리
+      </div>
+      <div class="nav-item admin-only" onclick="showTab('users')">
+        <span class="ico">◫</span> 사용자 관리
+      </div>
+      <div class="sb-section">도움말</div>
+      <div class="nav-item" onclick="showTab('guide')">
+        <span class="ico">◌</span> 사용 가이드
+      </div>
+    </div>
+    <div class="sb-bottom">
+      <button class="btn-logout" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div class="topbar">
+      <div class="tb-left">
+        <h1 id="top-title">예상 소득 계산</h1>
+        <p id="top-sub">계약 엑셀을 업로드하고 시상 데이터를 선택하여 예상 소득을 확인하세요</p>
+      </div>
+      <div class="tb-right">
+        <div class="tb-date" id="top-date"></div>
+        <div class="tb-emp" id="top-emp"></div>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- ════════ TAB: 예상 소득 계산 -->
+      <div class="tab-view active fade-in" id="tab-income">
+        <!-- Step Flow -->
+        <div class="steps-row">
+          <div class="step-card active" id="step1-card">
+            <div class="step-num">STEP 1</div>
+            <h4>시상 데이터 선택</h4>
+            <select id="sel-incentive" onchange="updateStep2()">
+              <option value="">-- 시상 데이터 선택 --</option>
+            </select>
+            <div class="mt8" style="font-size:11px;color:var(--t3);">등록된 시상 기준 적용</div>
+          </div>
+          <div class="step-card" id="step2-card">
+            <div class="step-num">STEP 2</div>
+            <h4>계약 엑셀 업로드</h4>
+            <div class="upload-area" id="upload-area" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+              <input type="file" id="file-input" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(event)">
+              <div class="u-ico">📂</div>
+              <p>파일을 드래그하거나 클릭하세요</p>
+              <div class="u-file" id="upload-status">.xlsx / .xls / .csv</div>
+            </div>
+          </div>
+          <div class="step-card" id="step3-card">
+            <div class="step-num">STEP 3</div>
+            <h4>계산 옵션</h4>
+            <div class="cb-row"><input type="checkbox" id="opt-add" checked><label for="opt-add">추가시책 반영</label></div>
+            <div class="cb-row"><input type="checkbox" id="opt-unmatched" checked><label for="opt-unmatched">미매칭 상품 표시</label></div>
+            <div class="cb-row"><input type="checkbox" id="opt-monthly"><label for="opt-monthly">월초P만 포함</label></div>
+          </div>
+          <div class="step-card" id="step4-card">
+            <div class="step-num">STEP 4</div>
+            <h4>계산 실행</h4>
+            <button class="btn btn-gold" style="width:100%;margin-bottom:10px;" onclick="runCalculation()">▶ 예상 소득 계산</button>
+            <button class="btn btn-outline" style="width:100%;font-size:12px;" onclick="resetCalculation()">초기화</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-grid" style="display:none;">
+          <div class="stat-card gold">
+            <div class="s-label">총 예상 시상금</div>
+            <div class="s-val" id="st-total">0</div>
+            <div class="s-sub">원</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="s-label">총 계약 건수</div>
+            <div class="s-val" id="st-count">0</div>
+            <div class="s-sub">건</div>
+          </div>
+          <div class="stat-card teal">
+            <div class="s-label">평균 계약당 시상금</div>
+            <div class="s-val" id="st-avg">0</div>
+            <div class="s-sub">원</div>
+          </div>
+          <div class="stat-card red">
+            <div class="s-label">미매칭 상품</div>
+            <div class="s-val" id="st-unmatched">0</div>
+            <div class="s-sub">건</div>
+          </div>
+        </div>
+
+        <!-- Result + AI side by side -->
+        <div class="row" id="result-area" style="display:none;">
+          <div class="col2">
+            <div class="card">
+              <div class="sec-hd">
+                <h3>예상 시상금 상세 내역</h3>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-outline btn-sm" onclick="downloadResult()">⬇ 엑셀 다운로드</button>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table id="result-table">
+                  <thead>
+                    <tr>
+                      <th>NO</th><th>계약번호</th><th>고객명</th><th>상품명</th><th>보험사</th>
+                      <th>원수보험료</th><th>지급률</th><th>추가율</th><th>예상 시상금</th><th>상태</th>
+                    </tr>
+                  </thead>
+                  <tbody id="result-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="col" style="min-width:220px;max-width:280px;">
+            <div class="ai-box">
+              <div class="ai-hd"><div class="ai-dot"></div><span>AI 추천 코멘트</span></div>
+              <div id="ai-comments"></div>
+            </div>
+            <div class="card-sm mt16">
+              <div style="font-size:11px;color:var(--t2);font-weight:600;margin-bottom:12px;">추천 상품 TOP 3</div>
+              <div id="top-products"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty" id="income-empty">
+          <div class="e-ico">📊</div>
+          <p>시상 데이터를 선택하고 계약 엑셀을 업로드한 후<br>계산 실행 버튼을 눌러주세요</p>
+          <div style="margin-top:20px;">
+            <button class="btn btn-outline btn-sm" onclick="loadDemoData()">📋 샘플 데이터로 테스트</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ TAB: 시상 데이터 관리 -->
+      <div class="tab-view" id="tab-incentive">
+        <div class="row">
+          <div class="col2">
+            <div class="card mb16">
+              <div class="sec-hd">
+                <h3>시상 데이터 붙여넣기</h3>
+                <div class="tag tag-blue">Excel 복사 → 붙여넣기</div>
+              </div>
+              <div style="font-size:12px;color:var(--t2);margin-bottom:12px;line-height:1.7;">
+                보험사에서 받은 시상 Excel을 복사(Ctrl+C) 후 아래에 붙여넣기(Ctrl+V) 하세요.<br>
+                <span style="color:var(--gold);">필수 열:</span> 보험사 | 상품명 | 지급률(%) | 추가율(%) [순서 무관, 헤더 첫 행]
+              </div>
+              <textarea class="paste-area" id="paste-area" placeholder="여기에 Excel 데이터를 붙여넣으세요...&#10;&#10;보험사	상품명	지급률	추가율&#10;KB라이프	건강보험플러스	140	20&#10;KB라이프	종신보험	180	15"></textarea>
+              <div class="row mt16">
+                <div class="col">
+                  <input type="text" id="incentive-name" placeholder="시상 데이터 이름 (예: 2026-06 KB라이프 시상)" style="font-size:12px;">
+                </div>
+                <div>
+                  <button class="btn btn-teal" onclick="parseAndPreviewIncentive()">미리보기</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview -->
+            <div class="card" id="incentive-preview" style="display:none;">
+              <div class="sec-hd">
+                <h3>파싱 미리보기</h3>
+                <div style="display:flex;gap:8px;">
+                  <button class="btn btn-gold btn-sm" onclick="saveIncentive()">저장</button>
+                  <button class="btn btn-outline btn-sm" onclick="document.getElementById('incentive-preview').style.display='none'">닫기</button>
+                </div>
+              </div>
+              <div class="table-wrap"><table id="preview-table"><thead></thead><tbody></tbody></table></div>
+            </div>
+          </div>
+
+          <!-- Saved List -->
+          <div class="col">
+            <div class="card">
+              <div class="sec-hd">
+                <h3>등록된 시상 목록</h3>
+                <span class="tag tag-teal" id="incentive-count">0건</span>
+              </div>
+              <div id="incentive-list"><div class="empty"><div class="e-ico">📋</div><p>등록된 시상 데이터가 없습니다</p></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ TAB: 수수료 테이블 (ADMIN) -->
+      <div class="tab-view" id="tab-commission">
+        <div class="card mb16">
+          <div class="sec-hd">
+            <h3>수수료 테이블 관리</h3>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-teal btn-sm" onclick="addCommissionRow()">+ 행 추가</button>
+              <button class="btn btn-gold btn-sm" onclick="saveCommissionTable()">저장</button>
+            </div>
+          </div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:16px;">보험사별·상품별 수수료율(지급률)을 관리합니다. 계약 엑셀 업로드 시 자동 매칭됩니다.</div>
+          <div class="table-wrap">
+            <table class="ct-table">
+              <thead><tr><th>보험사</th><th>상품유형 키워드</th><th>지급률 (%)</th><th>비고</th><th></th></tr></thead>
+              <tbody id="commission-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ TAB: 이력 조회 -->
+      <div class="tab-view" id="tab-history">
+        <div class="sec-hd mb16">
+          <h3>계산 이력 조회</h3>
+          <button class="btn btn-outline btn-sm" onclick="clearHistory()">이력 삭제</button>
+        </div>
+        <div id="history-list"><div class="empty"><div class="e-ico">📁</div><p>저장된 계산 이력이 없습니다</p></div></div>
+      </div>
+
+      <!-- ════════ TAB: 사용자 관리 (ADMIN) -->
+      <div class="tab-view" id="tab-users">
+        <div class="card mb16">
+          <div class="sec-hd">
+            <h3>사용자 관리</h3>
+            <button class="btn btn-teal btn-sm" onclick="openAddUserModal()">+ 사용자 추가</button>
+          </div>
+          <div class="table-wrap">
+            <table id="user-table">
+              <thead><tr><th>사번</th><th>이름</th><th>부서</th><th>권한</th><th>상태</th><th>관리</th></tr></thead>
+              <tbody id="user-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════ TAB: 사용 가이드 -->
+      <div class="tab-view" id="tab-guide">
+        <div class="row">
+          <div class="col">
+            <div class="card mb16">
+              <h3 style="margin-bottom:16px;">📂 계약 엑셀 양식 안내</h3>
+              <div style="font-size:12px;color:var(--t2);line-height:1.8;margin-bottom:16px;">
+                업로드할 계약 엑셀 파일은 아래 열 형식을 포함해야 합니다. (순서 무관, 헤더명 일치 필요)
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>열 이름</th><th>예시</th><th>필수</th></tr></thead>
+                  <tbody>
+                    <tr><td>계약번호</td><td class="num">A12345678</td><td><span class="chip chip-matched">필수</span></td></tr>
+                    <tr><td>고객명</td><td>홍길동</td><td><span class="chip chip-matched">필수</span></td></tr>
+                    <tr><td>담당자사번</td><td class="num">2023001</td><td><span class="chip chip-matched">필수</span></td></tr>
+                    <tr><td>상품명</td><td>(무)KB건강보험플러스</td><td><span class="chip chip-matched">필수</span></td></tr>
+                    <tr><td>보험사</td><td>KB라이프</td><td><span class="chip chip-matched">필수</span></td></tr>
+                    <tr><td>원수보험료</td><td class="num">300000</td><td><span class="chip chip-matched">필수</span></td></tr>
+                    <tr><td>지급률</td><td class="num">140</td><td><span class="chip chip-unmatched">선택</span></td></tr>
+                    <tr><td>추가율</td><td class="num">20</td><td><span class="chip chip-unmatched">선택</span></td></tr>
+                    <tr><td>계약일자</td><td class="num">2026-05-01</td><td><span class="chip chip-unmatched">선택</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <button class="btn btn-outline btn-sm mt16" onclick="downloadTemplate()">⬇ 양식 파일 다운로드</button>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card mb16">
+              <h3 style="margin-bottom:16px;">📋 시상 데이터 형식 안내</h3>
+              <div style="font-size:12px;color:var(--t2);line-height:1.8;margin-bottom:16px;">
+                보험사에서 받은 시상 Excel에서 아래 열이 포함된 영역을 선택·복사 후 붙여넣기하세요.
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>열</th><th>설명</th></tr></thead>
+                  <tbody>
+                    <tr><td>보험사</td><td>매칭에 사용 (예: KB라이프)</td></tr>
+                    <tr><td>상품명</td><td>키워드 부분 매칭 지원</td></tr>
+                    <tr><td>지급률</td><td>기본 수수료율 (%)</td></tr>
+                    <tr><td>추가율</td><td>시상 추가 지급률 (%)</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="mt16" style="background:var(--gold-d);border:1px solid rgba(240,180,41,0.2);border-radius:var(--r);padding:12px;">
+                <div style="font-size:11px;color:var(--gold);font-weight:600;margin-bottom:6px;">계산 공식</div>
+                <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--t1);">
+                  예상시상금 = 원수보험료 × (지급률 + 추가율) / 100
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <h3 style="margin-bottom:16px;">💡 자주 묻는 질문</h3>
+              <div style="font-size:12px;color:var(--t2);line-height:1.8;">
+                <div style="margin-bottom:10px;"><span style="color:var(--gold);">Q.</span> 내 계약만 보이는 이유는?</div>
+                <div style="margin-bottom:16px;padding-left:14px;">사번 기반 권한 설정으로 본인 담당 계약만 조회됩니다. 관리자는 전체 조회 가능.</div>
+                <div style="margin-bottom:10px;"><span style="color:var(--gold);">Q.</span> 미매칭 상품이란?</div>
+                <div style="padding-left:14px;">수수료 테이블 또는 시상 데이터에서 상품명이 매칭되지 않은 건입니다. 수수료 테이블에서 키워드를 추가하세요.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ADD USER MODAL -->
+<div class="modal-bg" id="user-modal">
+  <div class="modal">
+    <h3>사용자 추가</h3>
+    <div class="form-group"><label>사번</label><input type="text" id="m-emp" placeholder="예) 2025001"></div>
+    <div class="form-group"><label>이름</label><input type="text" id="m-name" placeholder="홍길동"></div>
+    <div class="form-group"><label>부서</label><input type="text" id="m-dept" placeholder="영업1팀"></div>
+    <div class="form-group"><label>비밀번호</label><input type="password" id="m-pw" placeholder="초기 비밀번호"></div>
+    <div class="form-group"><label>권한</label>
+      <select id="m-role"><option value="user">일반 사용자</option><option value="admin">관리자</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">취소</button>
+      <button class="btn btn-gold" onclick="addUser()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATA STORE
+// ══════════════════════════════════════════════════════
+let USERS = {
+  '1612175': { name: '이현경', role: 'admin', password: '1234', dept: '생보관리팀' },
+  '1611679': { name: '이다경', role: 'admin', password: '1234', dept: '생보관리팀' },
+  '1611653': { name: '박명주', role: 'admin', password: '1234', dept: '생보관리팀' },
+  '1612054': { name: '김혜연', role: 'admin', password: '1234', dept: '생보관리팀' },
+  '1611882': { name: '조혜인', role: 'admin', password: '1234', dept: '생보관리팀' },
+  '1612205': { name: '구나은', role: 'admin', password: '1234', dept: '생보관리팀' },
+  '2023001': { name: '김철수', role: 'user',  password: '1234', dept: '비앤비월드총괄' },
+  '2023002': { name: '이영희', role: 'user',  password: '1234', dept: '영업2팀' },
+  '2024001': { name: '박민수', role: 'user',  password: '1234', dept: '영업1팀' },
+};
+
+let commissionTable = [
+  { company:'KB라이프',   keyword:'건강보험', rate:140 },
+  { company:'KB라이프',   keyword:'종신보험', rate:180 },
+  { company:'KB라이프',   keyword:'암보험',   rate:120 },
+  { company:'KB라이프',   keyword:'간편심사', rate:140 },
+  { company:'DB생명',     keyword:'건강보험', rate:130 },
+  { company:'DB생명',     keyword:'종신보험', rate:170 },
+  { company:'한화생명',   keyword:'건강보험', rate:135 },
+  { company:'한화생명',   keyword:'종신보험', rate:175 },
+  { company:'교보생명',   keyword:'건강보험', rate:128 },
+  { company:'교보생명',   keyword:'종신보험', rate:165 },
+];
+
+let incentiveSets = []; // { id, name, date, rows:[{company,product,rate,extra}] }
+let uploadedContracts = [];
+let calculationHistory = [];
+let currentUser = null;
+let pendingIncentiveRows = [];
+
+const DEMO_CONTRACTS = [
+  { 계약번호:'A12345678', 고객명:'홍길동',   담당자사번:'2023001', 상품명:'(무)KB건강보험플러스', 보험사:'KB라이프', 원수보험료:300000, 지급률:140, 추가율:20 },
+  { 계약번호:'A12345679', 고객명:'김철수',   담당자사번:'2023001', 상품명:'(무)KB종신보험',       보험사:'KB라이프', 원수보험료:250000, 지급률:180, 추가율:20 },
+  { 계약번호:'A12345680', 고객명:'이영희',   담당자사번:'2023002', 상품명:'(무)KB암보험',         보험사:'KB라이프', 원수보험료:200000, 지급률:120, 추가율:20 },
+  { 계약번호:'A12345681', 고객명:'박민수',   담당자사번:'2024001', 상품명:'(무)KB연금보험',       보험사:'KB라이프', 원수보험료:150000, 지급률:100, 추가율:20 },
+  { 계약번호:'A12345682', 고객명:'최지연',   담당자사번:'2023001', 상품명:'(무)KB간편심사보험플러스', 보험사:'KB라이프', 원수보험료:180000, 지급률:140, 추가율:20 },
+  { 계약번호:'A12345683', 고객명:'강동원',   담당자사번:'2023002', 상품명:'(무)DB건강보험',       보험사:'DB생명',   원수보험료:220000, 지급률:130, 추가율:15 },
+  { 계약번호:'A12345684', 고객명:'신민아',   담당자사번:'2024001', 상품명:'(무)한화종신보험',     보험사:'한화생명', 원수보험료:280000, 지급률:175, 추가율:18 },
+];
+
+// ══════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════
+function doLogin() {
+  const emp = document.getElementById('inp-emp').value.trim();
+  const pw  = document.getElementById('inp-pw').value;
+  const err = document.getElementById('login-err');
+  if (!USERS[emp]) { err.textContent = '존재하지 않는 사번입니다.'; return; }
+  if (USERS[emp].password !== pw) { err.textContent = '비밀번호가 올바르지 않습니다.'; return; }
+  currentUser = { empId: emp, ...USERS[emp] };
+  err.textContent = '';
+  document.getElementById('login-page').classList.add('hidden');
+  initApp();
+}
+
+document.getElementById('inp-pw').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('inp-emp').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('inp-pw').focus(); });
+
+function doLogout() {
+  currentUser = null;
+  uploadedContracts = [];
+  document.getElementById('app').classList.remove('visible','is-admin');
+  document.getElementById('login-page').classList.remove('hidden');
+  document.getElementById('inp-emp').value = '';
+  document.getElementById('inp-pw').value = '';
+  resetCalculation();
+}
+
+// ══════════════════════════════════════════════════════
+// APP INIT
+// ══════════════════════════════════════════════════════
+function initApp() {
+  const app = document.getElementById('app');
+  app.classList.add('visible');
+  if (currentUser.role === 'admin') app.classList.add('is-admin');
+  else app.classList.remove('is-admin');
+
+  // Sidebar user info
+  document.getElementById('sb-ava').textContent = currentUser.name[0];
+  document.getElementById('sb-name').textContent = currentUser.name;
+  document.getElementById('sb-info').textContent = `사번: ${currentUser.empId} | ${currentUser.dept}`;
+  const roleBadge = document.getElementById('sb-role');
+  if (currentUser.role === 'admin') { roleBadge.textContent = '관리자'; roleBadge.className = 'role-badge admin'; }
+  else { roleBadge.textContent = '일반사용자'; roleBadge.className = 'role-badge user'; }
+
+  // Date
+  const now = new Date();
+  document.getElementById('top-date').textContent = now.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('top-emp').textContent = `${currentUser.name} (${currentUser.empId})`;
+
+  refreshIncentiveDropdown();
+  renderCommissionTable();
+  renderUserTable();
+  renderHistoryList();
+  renderIncentiveList();
+}
+
+// ══════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ══════════════════════════════════════════════════════
+const TAB_META = {
+  income:     { title:'예상 소득 계산',     sub:'계약 엑셀을 업로드하고 시상 데이터를 선택하여 예상 소득을 확인하세요' },
+  incentive:  { title:'시상 데이터 관리',   sub:'월별 시상 기준 데이터를 붙여넣기로 등록합니다' },
+  commission: { title:'수수료 테이블 관리', sub:'보험사별 상품 수수료율을 관리합니다 (관리자 전용)' },
+  history:    { title:'계산 이력 조회',     sub:'과거 계산 결과를 확인합니다' },
+  users:      { title:'사용자 관리',        sub:'사번 및 권한을 관리합니다 (관리자 전용)' },
+  guide:      { title:'사용 가이드',        sub:'엑셀 양식 및 사용 방법을 확인하세요' },
+};
+
+function showTab(tab) {
+  document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('tab-'+tab);
+  if (el) { el.classList.add('active'); el.classList.add('fade-in'); setTimeout(()=>el.classList.remove('fade-in'),400); }
+  event.currentTarget.classList.add('active');
+  const meta = TAB_META[tab] || {};
+  document.getElementById('top-title').textContent = meta.title || '';
+  document.getElementById('top-sub').textContent = meta.sub || '';
+}
+
+// ══════════════════════════════════════════════════════
+// EXCEL UPLOAD & PARSING
+// ══════════════════════════════════════════════════════
+function handleDragOver(e) { e.preventDefault(); document.getElementById('upload-area').classList.add('drag'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-area').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileUpload(e) { if(e.target.files[0]) processFile(e.target.files[0]); }
+
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, {defval:''});
+      uploadedContracts = normalizeContracts(data);
+      document.getElementById('upload-status').textContent = `✓ ${file.name} (${uploadedContracts.length}건)`;
+      document.getElementById('step2-card').className = 'step-card done';
+      showToast(`${uploadedContracts.length}건의 계약 데이터를 불러왔습니다`, 'success');
+    } catch(err) { showToast('파일 파싱 오류: '+err.message,'error'); }
+  };
+  reader.readAsBinaryString(file);
+}
+
+const COL_MAP = {
+  계약번호:['계약번호','계약 번호','contract_no'],
+  고객명:['고객명','고객이름','customer'],
+  담당자사번:['담당자사번','담당자 사번','사번','emp_id'],
+  상품명:['상품명','상품 이름','product'],
+  보험사:['보험사','보험 회사','company'],
+  원수보험료:['원수보험료','원수 보험료','보험료','premium'],
+  지급률:['지급률','지급 율','rate'],
+  추가율:['추가율','추가 율','extra'],
+};
+
+function normalizeContracts(rows) {
+  if (!rows.length) return [];
+  const keys = Object.keys(rows[0]);
+  const map = {};
+  Object.entries(COL_MAP).forEach(([std, aliases]) => {
+    const found = keys.find(k => aliases.some(a => k.replace(/\s/g,'').toLowerCase()===a.replace(/\s/g,'').toLowerCase()));
+    if (found) map[std] = found;
+  });
+  return rows.map(r => {
+    const c = {};
+    Object.keys(COL_MAP).forEach(std => { c[std] = map[std] ? r[map[std]] : ''; });
+    c.원수보험료 = parseFloat(c.원수보험료)||0;
+    c.지급률 = parseFloat(c.지급률)||0;
+    c.추가율 = parseFloat(c.추가율)||0;
+    return c;
+  }).filter(c => c.계약번호||c.고객명);
+}
+
+// ══════════════════════════════════════════════════════
+// CALCULATION
+// ══════════════════════════════════════════════════════
+function updateStep2() {
+  const v = document.getElementById('sel-incentive').value;
+  document.getElementById('step1-card').className = v ? 'step-card done' : 'step-card active';
+}
+
+function runCalculation() {
+  if (!uploadedContracts.length) { showToast('먼저 계약 엑셀을 업로드하세요','error'); return; }
+  const incId = document.getElementById('sel-incentive').value;
+  const incSet = incId ? incentiveSets.find(s=>s.id==incId) : null;
+  const optAdd = document.getElementById('opt-add').checked;
+  const optUnmatched = document.getElementById('opt-unmatched').checked;
+
+  // Filter by user
+  let contracts = currentUser.role === 'admin'
+    ? uploadedContracts
+    : uploadedContracts.filter(c => String(c.담당자사번).trim() === String(currentUser.empId).trim());
+
+  const results = contracts.map(c => {
+    // Find commission rate
+    let rate = c.지급률 || lookupCommission(c.보험사, c.상품명);
+    let extra = c.추가율 || 0;
+    let matched = true;
+
+    if (incSet && optAdd) {
+      const incRow = incSet.rows.find(r =>
+        r.company === c.보험사 && c.상품명.includes(r.product.replace(/\s/g,'').substring(0,4))
+      ) || incSet.rows.find(r => r.company === c.보험사);
+      if (incRow) { extra = incRow.extra; if(!rate) rate = incRow.rate; }
+      else if (!rate) { matched = false; }
+    }
+    if (!rate) { matched = false; rate = 0; }
+
+    const total = Math.round(c.원수보험료 * (rate + extra) / 100);
+    return { ...c, rate, extra, total, matched };
+  });
+
+  const filtered = optUnmatched ? results : results.filter(r=>r.matched);
+  renderResults(filtered);
+
+  // Save history
+  const totalSum = filtered.reduce((a,r)=>a+r.total,0);
+  calculationHistory.unshift({
+    date: new Date().toLocaleString('ko-KR'),
+    user: currentUser.empId,
+    userName: currentUser.name,
+    count: filtered.length,
+    total: totalSum,
+    incName: incSet ? incSet.name : '시상 미적용',
+    rows: filtered,
+  });
+  renderHistoryList();
+}
+
+function lookupCommission(company, product) {
+  const row = commissionTable.find(r => r.company===company && product.includes(r.keyword));
+  return row ? row.rate : 0;
+}
+
+function renderResults(rows) {
+  document.getElementById('income-empty').style.display = 'none';
+  document.getElementById('stats-grid').style.display = 'grid';
+  document.getElementById('result-area').style.display = 'flex';
+
+  const total = rows.reduce((a,r)=>a+r.total,0);
+  const unmatched = rows.filter(r=>!r.matched).length;
+  document.getElementById('st-total').textContent = total.toLocaleString();
+  document.getElementById('st-count').textContent = rows.length.toLocaleString();
+  document.getElementById('st-avg').textContent = rows.length ? Math.round(total/rows.length).toLocaleString() : '0';
+  document.getElementById('st-unmatched').textContent = unmatched;
+
+  const tbody = document.getElementById('result-tbody');
+  tbody.innerHTML = rows.map((r,i) => `
+    <tr>
+      <td class="num" style="color:var(--t2)">${i+1}</td>
+      <td class="num">${r.계약번호}</td>
+      <td>${r.고객명}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;">${r.상품명}</td>
+      <td>${r.보험사}</td>
+      <td class="num">${r.원수보험료.toLocaleString()}</td>
+      <td class="num">${r.rate}%</td>
+      <td class="num">${r.extra}%</td>
+      <td class="td-gold">${r.total.toLocaleString()}</td>
+      <td><span class="chip ${r.matched?'chip-matched':'chip-unmatched'}">${r.matched?'매칭':'미매칭'}</span></td>
+    </tr>`).join('');
+
+  renderAIComments(rows, total);
+  window._lastResults = rows;
+}
+
+function renderAIComments(rows, total) {
+  const container = document.getElementById('ai-comments');
+  const unmatched = rows.filter(r=>!r.matched).length;
+  const topCompany = mostFrequent(rows.map(r=>r.보험사));
+  const prevTotal = calculationHistory.length > 1 ? calculationHistory[1].total : null;
+  const comments = [];
+
+  if (prevTotal) {
+    const diff = total - prevTotal;
+    const pct = Math.round(Math.abs(diff)/prevTotal*100);
+    comments.push(`이번 달 예상 시상금은 전월 대비 ${diff>=0?'+':'-'}${pct}% ${diff>=0?'증가':'감소'}했습니다.`);
+  }
+  if (unmatched > 0) comments.push(`미매칭 ${unmatched}건은 수수료 테이블 등록 후 재계산하면 소득이 늘어납니다.`);
+  if (topCompany) comments.push(`${topCompany} 계약 비중이 가장 높습니다. 집중 관리를 추천드립니다.`);
+  const avgRate = rows.length ? Math.round(rows.reduce((a,r)=>a+r.rate,0)/rows.length) : 0;
+  if (avgRate > 150) comments.push(`평균 지급률 ${avgRate}%로 우수한 포트폴리오입니다.`);
+  else comments.push(`평균 지급률 ${avgRate}%. 고지급률 상품 비중 확대를 권장합니다.`);
+
+  container.innerHTML = comments.map(c=>`<div class="ai-item">${c}</div>`).join('');
+
+  // Top products
+  const sortedRows = [...rows].filter(r=>r.matched).sort((a,b)=>b.total-a.total).slice(0,3);
+  document.getElementById('top-products').innerHTML = sortedRows.map((r,i)=>
+    `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;">
+      <span style="color:var(--gold);font-family:'DM Mono',monospace;">${i+1}.</span>
+      <span style="color:var(--t1);margin-left:6px;">${r.상품명.replace('(무)','').substring(0,12)}</span>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);margin-left:16px;">
+        ${r.total.toLocaleString()}원
+      </div>
+    </div>`).join('');
+}
+
+function mostFrequent(arr) {
+  if (!arr.length) return null;
+  return arr.sort((a,b)=>arr.filter(v=>v===a).length-arr.filter(v=>v===b).length).pop();
+}
+
+function resetCalculation() {
+  uploadedContracts = [];
+  document.getElementById('upload-status').textContent = '.xlsx / .xls / .csv';
+  document.getElementById('file-input').value = '';
+  document.getElementById('sel-incentive').value = '';
+  document.getElementById('stats-grid').style.display = 'none';
+  document.getElementById('result-area').style.display = 'none';
+  document.getElementById('income-empty').style.display = '';
+  document.getElementById('step1-card').className = 'step-card active';
+  document.getElementById('step2-card').className = 'step-card';
+  document.getElementById('step3-card').className = 'step-card';
+  document.getElementById('step4-card').className = 'step-card';
+}
+
+function loadDemoData() {
+  uploadedContracts = DEMO_CONTRACTS;
+  document.getElementById('upload-status').textContent = `✓ 샘플 데이터 (${DEMO_CONTRACTS.length}건)`;
+  document.getElementById('step2-card').className = 'step-card done';
+  showToast('샘플 데이터가 로드되었습니다. 계산 실행을 눌러주세요','info');
+}
+
+function downloadResult() {
+  const rows = window._lastResults;
+  if (!rows) return;
+  const ws = XLSX.utils.json_to_sheet(rows.map(r=>({
+    계약번호:r.계약번호, 고객명:r.고객명, 상품명:r.상품명, 보험사:r.보험사,
+    원수보험료:r.원수보험료, 지급률:r.rate, 추가율:r.extra, 예상시상금:r.total,
+    상태:r.matched?'매칭':'미매칭'
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '예상시상금');
+  XLSX.writeFile(wb, `예상시상금_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ══════════════════════════════════════════════════════
+// INCENTIVE DATA
+// ══════════════════════════════════════════════════════
+function parseAndPreviewIncentive() {
+  const raw = document.getElementById('paste-area').value.trim();
+  if (!raw) { showToast('데이터를 붙여넣어 주세요','error'); return; }
+
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if (lines.length < 2) { showToast('헤더 + 1행 이상 필요합니다','error'); return; }
+
+  const headers = lines[0].split('\t').map(h=>h.trim());
+  const rows = lines.slice(1).map(l => {
+    const cells = l.split('\t');
+    const row = {};
+    headers.forEach((h,i) => row[h] = cells[i]?.trim()||'');
+    return row;
+  });
+
+  // Normalize headers
+  const norm = rows.map(r => ({
+    company: r['보험사']||r['company']||'',
+    product: r['상품명']||r['상품']||r['product']||'',
+    rate:    parseFloat(r['지급률']||r['rate']||0),
+    extra:   parseFloat(r['추가율']||r['추가']||r['extra']||0),
+  })).filter(r=>r.company||r.product);
+
+  pendingIncentiveRows = norm;
+
+  // Render preview
+  const thead = document.querySelector('#preview-table thead');
+  const tbody = document.querySelector('#preview-table tbody');
+  thead.innerHTML = '<tr><th>보험사</th><th>상품명</th><th>지급률(%)</th><th>추가율(%)</th></tr>';
+  tbody.innerHTML = norm.map(r=>`<tr>
+    <td>${r.company}</td><td>${r.product}</td>
+    <td class="num">${r.rate}</td><td class="num td-gold">${r.extra}</td>
+  </tr>`).join('');
+
+  document.getElementById('incentive-preview').style.display = '';
+  showToast(`${norm.length}행 파싱 완료. 저장 버튼으로 등록하세요`,'success');
+}
+
+function saveIncentive() {
+  const name = document.getElementById('incentive-name').value.trim() ||
+    `시상_${new Date().toLocaleDateString('ko-KR')}`;
+  if (!pendingIncentiveRows.length) { showToast('파싱된 데이터가 없습니다','error'); return; }
+  incentiveSets.push({ id: Date.now(), name, date: new Date().toLocaleDateString('ko-KR'), rows: pendingIncentiveRows });
+  pendingIncentiveRows = [];
+  document.getElementById('incentive-preview').style.display = 'none';
+  document.getElementById('paste-area').value = '';
+  document.getElementById('incentive-name').value = '';
+  refreshIncentiveDropdown();
+  renderIncentiveList();
+  showToast(`"${name}" 등록 완료`,'success');
+}
+
+function refreshIncentiveDropdown() {
+  const sel = document.getElementById('sel-incentive');
+  sel.innerHTML = '<option value="">-- 시상 데이터 선택 (선택사항) --</option>' +
+    incentiveSets.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+function renderIncentiveList() {
+  const cont = document.getElementById('incentive-list');
+  const cnt = document.getElementById('incentive-count');
+  cnt.textContent = `${incentiveSets.length}건`;
+  if (!incentiveSets.length) {
+    cont.innerHTML = '<div class="empty"><div class="e-ico">📋</div><p>등록된 시상 데이터가 없습니다</p></div>';
+    return;
+  }
+  cont.innerHTML = incentiveSets.map(s=>`
+    <div class="hist-row">
+      <div>
+        <div style="font-size:13px;font-weight:600;">${s.name}</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:3px;">${s.date} | ${s.rows.length}행</div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <span class="tag tag-teal">${s.rows.length}개 상품</span>
+        <button class="btn btn-outline btn-sm" onclick="deleteIncentive(${s.id})">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteIncentive(id) {
+  incentiveSets = incentiveSets.filter(s=>s.id!==id);
+  refreshIncentiveDropdown();
+  renderIncentiveList();
+  showToast('삭제되었습니다','info');
+}
+
+// ══════════════════════════════════════════════════════
+// COMMISSION TABLE
+// ══════════════════════════════════════════════════════
+function renderCommissionTable() {
+  const tbody = document.getElementById('commission-tbody');
+  tbody.innerHTML = commissionTable.map((r,i)=>`
+    <tr>
+      <td><input type="text" value="${r.company}" onchange="commissionTable[${i}].company=this.value" style="width:100%;"></td>
+      <td><input type="text" value="${r.keyword}" onchange="commissionTable[${i}].keyword=this.value" style="width:100%;"></td>
+      <td><input type="number" value="${r.rate}" onchange="commissionTable[${i}].rate=+this.value" style="width:80px;"></td>
+      <td><input type="text" placeholder="비고" style="width:100%;"></td>
+      <td><button class="btn btn-outline btn-sm" style="color:var(--red);border-color:rgba(255,107,107,0.3);" onclick="removeCommissionRow(${i})">삭제</button></td>
+    </tr>`).join('');
+}
+
+function addCommissionRow() {
+  commissionTable.push({company:'',keyword:'',rate:0});
+  renderCommissionTable();
+}
+function removeCommissionRow(i) { commissionTable.splice(i,1); renderCommissionTable(); }
+function saveCommissionTable() { showToast('수수료 테이블이 저장되었습니다','success'); }
+
+// ══════════════════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════════════════
+function renderHistoryList() {
+  const cont = document.getElementById('history-list');
+  const visible = currentUser?.role==='admin'
+    ? calculationHistory
+    : calculationHistory.filter(h=>h.user===currentUser?.empId);
+  if (!visible.length) {
+    cont.innerHTML = '<div class="empty"><div class="e-ico">📁</div><p>저장된 계산 이력이 없습니다</p></div>';
+    return;
+  }
+  cont.innerHTML = visible.map((h,i)=>`
+    <div class="hist-row">
+      <div class="h-date">${h.date}</div>
+      <div class="h-info">
+        <div style="font-size:13px;font-weight:500;">${h.userName} (${h.user})</div>
+        <div style="font-size:11px;color:var(--t2);margin-top:2px;">${h.incName} | ${h.count}건</div>
+      </div>
+      <div class="h-total">${h.total.toLocaleString()}원</div>
+      <button class="btn btn-outline btn-sm" onclick="reloadHistory(${i})">불러오기</button>
+    </div>`).join('');
+}
+
+function reloadHistory(i) {
+  const h = calculationHistory[i];
+  renderResults(h.rows);
+  showTab('income');
+  showToast('이력을 불러왔습니다','info');
+}
+
+function clearHistory() {
+  if (!confirm('계산 이력을 모두 삭제하시겠습니까?')) return;
+  calculationHistory = [];
+  renderHistoryList();
+  showToast('이력이 삭제되었습니다','info');
+}
+
+// ══════════════════════════════════════════════════════
+// USER MANAGEMENT
+// ══════════════════════════════════════════════════════
+function renderUserTable() {
+  const tbody = document.getElementById('user-tbody');
+  tbody.innerHTML = Object.entries(USERS).map(([empId, u])=>`
+    <tr>
+      <td class="num">${empId}</td>
+      <td>${u.name}</td>
+      <td>${u.dept}</td>
+      <td><span class="chip ${u.role==='admin'?'chip-admin':'chip-matched'}">${u.role==='admin'?'관리자':'일반'}</span></td>
+      <td><span class="chip chip-matched">활성</span></td>
+      <td>
+        ${USERS[empId]?.dept==  '생보관리팀' ? '<span style="color:var(--t3);font-size:11px;">슈퍼관리자</span>' : `<button class="btn btn-outline btn-sm" onclick="toggleRole('${empId}')">권한변경</button>`}
+      </td>
+    </tr>`).join('');
+}
+
+function toggleRole(empId) {
+  USERS[empId].role = USERS[empId].role==='admin' ? 'user' : 'admin';
+  renderUserTable();
+  showToast(`${USERS[empId].name}의 권한이 변경되었습니다`,'success');
+}
+
+function openAddUserModal() { document.getElementById('user-modal').classList.add('open'); }
+function closeModal() { document.getElementById('user-modal').classList.remove('open'); }
+function addUser() {
+  const emp = document.getElementById('m-emp').value.trim();
+  const name = document.getElementById('m-name').value.trim();
+  const dept = document.getElementById('m-dept').value.trim();
+  const pw   = document.getElementById('m-pw').value;
+  const role = document.getElementById('m-role').value;
+  if (!emp||!name) { showToast('사번과 이름은 필수입니다','error'); return; }
+  if (USERS[emp]) { showToast('이미 존재하는 사번입니다','error'); return; }
+  USERS[emp] = {name, dept, password:pw||'1234', role};
+  renderUserTable();
+  closeModal();
+  showToast(`${name} 사용자가 추가되었습니다`,'success');
+}
+
+// ══════════════════════════════════════════════════════
+// TEMPLATE DOWNLOAD
+// ══════════════════════════════════════════════════════
+function downloadTemplate() {
+  const ws = XLSX.utils.json_to_sheet([
+    {계약번호:'A12345678',고객명:'홍길동',담당자사번:'2023001',상품명:'(무)KB건강보험플러스',보험사:'KB라이프',원수보험료:300000,지급률:140,추가율:20,계약일자:'2026-05-01'},
+    {계약번호:'A12345679',고객명:'김철수',담당자사번:'2023001',상품명:'(무)KB종신보험',보험사:'KB라이프',원수보험료:250000,지급률:180,추가율:20,계약일자:'2026-05-01'},
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '계약리스트');
+  XLSX.writeFile(wb, '계약리스트_양식.xlsx');
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+function showToast(msg, type='info') {
+  const cont = document.getElementById('toast');
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.textContent = msg;
+  cont.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ══════════════════════════════════════════════════════
+// MISC
+// ══════════════════════════════════════════════════════
+// Close modal on background click
+document.getElementById('user-modal').addEventListener('click', function(e){
+  if(e.target===this) closeModal();
+});
+
+// Override nav-item click for active state fix
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+</script>
+</body>
+</html>
